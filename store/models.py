@@ -20,6 +20,7 @@ class Product(models.Model):
     collection=models.ForeignKey(Collection,on_delete=models.PROTECT)
     promotions=models.ManyToManyField(Promotion)
 
+
 class Customer(models.Model):
     MemberSHip_Bronze='B'
     MemberSHip_Silver='S'
@@ -35,6 +36,7 @@ class Customer(models.Model):
     phone=models.CharField(max_length=255)
     birth_date=models.DateField(null=True)
     membership=models.CharField(max_length=1,choices=MEMBERSHIP_CHOICES,default=MemberSHip_Bronze)
+
 
 class Order(models.Model):
     PAYMENT_STATUS=[
