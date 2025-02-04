@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+import uuid
 
 
 class Promotion(models.Model):
@@ -48,6 +50,7 @@ class Customer(models.Model):
     phone=models.CharField(max_length=255)
     birth_date=models.DateField(null=True)
     membership=models.CharField(max_length=1,choices=MEMBERSHIP_CHOICES,default=MemberSHip_Bronze)
+    
 
 
 class Order(models.Model):
@@ -62,8 +65,8 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order=models.ForeignKey(Order,on_delete=models.PROTECT)
-    product=models.ForeignKey(Product,on_delete=models.PROTECT)
-    quantity=models.PositiveSmallIntegerField()
+    product=models.ForeignKey(Product,on_delete=models.PROTECT,related_name='orderitems')
+    quantity=models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
     unit_price=models.DecimalField(max_digits=6,decimal_places=2)
 
 
@@ -73,11 +76,20 @@ class Adress(models.Model):
     customer=models.ForeignKey(Customer,on_delete=models.CASCADE)
 
 class Cart(models.Model):
-    title=models.CharField(max_length=255)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False) 
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
 
 class CartItem(models.Model):
     quantity=models.PositiveIntegerField()
-    cart=models.ForeignKey(Cart,on_delete=models.CASCADE)
+    cart=models.ForeignKey(Cart,on_delete=models.CASCADE,related_name='items')
     product=models.ForeignKey(Product,on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together=[['cart','product']]
+
+class Review(models.Model):
+    product=models.ForeignKey(Product,on_delete=models.CASCADE,related_name='reviews')
+    name=models.CharField(max_length=255)
+    description=models.TextField()
+    date=models.DateField(auto_now_add=True)
