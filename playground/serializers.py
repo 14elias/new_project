@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from decimal import Decimal
 from django.db.models.aggregates import Count
-from store.models import Cart, CartItem, Customer, Product,Collection, Review
+from django.db import transaction
+from store.models import Cart, CartItem, Customer, OrderItem, Product,Collection, Review,Order
 
 class CollectionBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -92,3 +93,40 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model=Customer
         fields=['id','phone','birth_date','membership','user_id']
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product=SimpleProductSerializer()
+    class Meta:
+        model=OrderItem
+        fields=['id','order','product','quantity','unit_price']
+class OrderSerializer(serializers.ModelSerializer):
+    items=OrderItemSerializer(many=True)
+    class Meta:
+        model=Order
+        fields=['placed_at','payment_status','customer','items']
+
+class CreateOrderSerializer(serializers.Serializer):
+    with transaction.atomic():
+        cart_id=serializers.UUIDField()
+
+        def save(self,**kwargs):
+            # print(self.context['user_id'])
+            # print(self.validated_data['cart_id'])
+            cart_items=CartItem.objects.\
+                    select_related('product').\
+                    filter(cart_id=self.validated_data['cart_id'])
+            
+            (customer,created)=Customer.objects.get_or_create(user_id=self.context['user_id'])
+            order=Order.objects.create(customer=customer)
+            order_items=[
+                OrderItem(
+                    order=order,
+                    product=item.product,
+                    unit_price=item.product.unit_price,
+                    quantity=item.quantity
+                ) for item in cart_items
+            ]
+            Order.objects.bulk_create(order_items)
+            Cart.objects.filter(pk=self.validated_data['cart_id']).delete()
+
+            return order

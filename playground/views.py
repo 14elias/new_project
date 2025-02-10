@@ -6,8 +6,8 @@ from rest_framework.viewsets import ModelViewSet,GenericViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser
 from django_filters.rest_framework import DjangoFilterBackend
-from .serializers import AddCartItemSerializer, CartItemSerializer, CartSerializer, CollectionSerializer, CustomerSerializer, ProductSerializer, ReviewSerializer, UpdateCartItemSerializer
-from store.models import Cart, CartItem, Customer, OrderItem, Product,Collection, Review
+from .serializers import CreateOrderSerializer, OrderSerializer,AddCartItemSerializer, CartItemSerializer, CartSerializer, CollectionSerializer, CustomerSerializer, ProductSerializer, ReviewSerializer, UpdateCartItemSerializer
+from store.models import Cart, CartItem, Customer, Order, OrderItem, Product,Collection, Review
 from .filter import ProductFilter
 from .pagination import DefaultPagination
 from .permission import IsAdminOrReadOnly, ViewCustomerHistoryPermission
@@ -88,3 +88,24 @@ class CustomerViewset(ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
+
+class OrderViewset(ModelViewSet):
+    permission_classes=[IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer=CreateOrderSerializer(data=request.data,context={'user_id':self.request.user.id})
+        serializer.is_valid(raise_exception=True)
+        order=serializer.save()
+        serializer=OrderSerializer(order)
+        return Response(serializer.data)
+
+    
+    def get_serializer_class(self):
+        if self.request.method=='POST':
+            return CreateOrderSerializer
+        return OrderSerializer
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Order.objects.all()
+        (customer_id,created)=Customer.objects.only('id').get_or_create(user_id=self.request.user.id)
+        return Order.objects.filter(customer_id=customer_id)
